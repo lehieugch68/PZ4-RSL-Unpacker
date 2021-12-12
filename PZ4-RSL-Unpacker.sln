@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31829.152
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PZ4-RSL-Unpacker", "PZ4-RSL-Unpacker\PZ4-RSL-Unpacker.csproj", "{77D37C5A-913A-460E-8578-55F8900CB7BA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{77D37C5A-913A-460E-8578-55F8900CB7BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77D37C5A-913A-460E-8578-55F8900CB7BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77D37C5A-913A-460E-8578-55F8900CB7BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77D37C5A-913A-460E-8578-55F8900CB7BA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A0E2DF4D-311B-4EB5-B655-F71A26D08D53}
+	EndGlobalSection
+EndGlobal
