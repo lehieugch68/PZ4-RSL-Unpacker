@@ -212,8 +212,8 @@ namespace PZ4_RSL_Unpacker
 						byte b = reader.ReadByte();
 						while (b != 0 && reader.BaseStream.Position < reader.BaseStream.Length)
 						{
-							if (b == 0x8D) break;
 							bytes.Add(b);
+							if (b == 0x8D) break;
 							b = reader.ReadByte();
 						}
 						entries[i].Data = bytes.ToArray();
