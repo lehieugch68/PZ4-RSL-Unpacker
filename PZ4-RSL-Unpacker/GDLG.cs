@@ -169,8 +169,8 @@ namespace PZ4_RSL_Unpacker
             BinaryReader reader = new BinaryReader(File.OpenRead(file));
             Header header = ReadHeader(ref reader);
             TextEntry[] entries = ReadEntries(ref reader, header);
-			string[] result = new string[header.LineCount - 2];
-            reader.BaseStream.Seek(header.DialogDataOffset + entries[2].Pointer, SeekOrigin.Begin);
+			string[] result = new string[header.LineCount];
+            reader.BaseStream.Seek(header.DialogDataOffset, SeekOrigin.Begin);
 			for (int i = 0; i < result.Length; i++)
             {
 				List<byte> bytes = new List<byte>();
@@ -181,7 +181,7 @@ namespace PZ4_RSL_Unpacker
 					bytes.Add(b);
 					b = reader.ReadByte();
                 }
-				entries[i + 2].Data = bytes.ToArray();
+				entries[i].Data = bytes.ToArray();
 				result[i] = FullDecode(bytes);
             }
             reader.Close();
@@ -200,11 +200,24 @@ namespace PZ4_RSL_Unpacker
             {
 				reader.BaseStream.Seek(0, SeekOrigin.Begin);
 				writer.Write(reader.ReadBytes(header.DialogDataOffset));
-				writer.Write(reader.ReadBytes(entries[2].Pointer));
-				int pointer = entries[2].Pointer;
-				for (int i = 2; i < entries.Length; i++)
+				//writer.Write(reader.ReadBytes(entries[2].Pointer));
+				int pointer = 0;
+				for (int i = 0; i < entries.Length; i++)
                 {
-					entries[i].Data = FullEncode(i - 2 < input.Length ? input[i - 2] : "");
+					if (!input[i].StartsWith("{Copy}")) entries[i].Data = FullEncode(i < input.Length ? input[i] : "");
+                    else
+                    {
+						reader.BaseStream.Position = header.DialogDataOffset + entries[i].Pointer;
+						List<byte> bytes = new List<byte>();
+						byte b = reader.ReadByte();
+						while (b != 0 && reader.BaseStream.Position < reader.BaseStream.Length)
+						{
+							if (b == 0x8D) break;
+							bytes.Add(b);
+							b = reader.ReadByte();
+						}
+						entries[i].Data = bytes.ToArray();
+					} 
 					writer.Write(entries[i].Data);
 					entries[i].Pointer = pointer;
 					pointer += entries[i].Data.Length;
