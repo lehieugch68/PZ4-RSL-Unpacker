@@ -24,7 +24,8 @@ namespace PZ4_RSL_Unpacker
                     {
                         string rsl = Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}.RSL");
                         byte[] result = RSL.Repack(rsl, $"{Path.Combine(Path.GetFileNameWithoutExtension(file))}");
-                        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(file), $"{rsl}.new"), result);
+                        //File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(file), $"{rsl}.new"), result);
+                        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(file), $"{rsl}"), result);
                     }
                     else if (ext == ".rsl")
                     {
