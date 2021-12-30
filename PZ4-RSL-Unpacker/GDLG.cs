@@ -138,13 +138,17 @@ namespace PZ4_RSL_Unpacker
 			foreach (byte b in sourceBytes)
 			{
 				list.Add((byte)(b ^ 141));
+				Console.Write((b ^ 141).ToString("X") + " ");
+				
 			}
+			Console.WriteLine();
 			return SJIS2Unicode(list);
 		}
 		private static string SJIS2Unicode(List<byte> sourceBytes)
 		{
 			Encoding encoding = Encoding.GetEncoding("shift_jis");
-			Decoder decoder = encoding.GetDecoder();
+			string text = encoding.GetString(sourceBytes.ToArray());
+			/*Decoder decoder = encoding.GetDecoder();
 			int charCount = decoder.GetCharCount(sourceBytes.ToArray(), 0, sourceBytes.Count, true);
 			char[] array = new char[checked(charCount - 1 + 1)];
 			decoder.GetChars(sourceBytes.ToArray(), 0, sourceBytes.Count, array, 0, true);
@@ -152,16 +156,17 @@ namespace PZ4_RSL_Unpacker
 			foreach (char c in array)
 			{
 				text += c.ToString();
-			}
+			}*/
 			return text;
 		}
 		private static List<byte> Unicode2SJIS(string source)
 		{
 			Encoding encoding = Encoding.GetEncoding("shift_jis");
-			Encoder encoder = encoding.GetEncoder();
+			/*Encoder encoder = encoding.GetEncoder();
 			int byteCount = encoder.GetByteCount(Conversions.ToCharArrayRankOne(source), 0, source.Count<char>(), true);
 			byte[] array = new byte[checked(byteCount - 1 + 1)];
-			encoder.GetBytes(source.ToCharArray(), 0, source.Count<char>(), array, 0, true);
+			encoder.GetBytes(source.ToCharArray(), 0, source.Count<char>(), array, 0, true);*/
+			byte[] array = encoding.GetBytes(source);
 			return array.ToList<byte>();
 		}
 		public static string[] Unpack(string file)
@@ -171,20 +176,29 @@ namespace PZ4_RSL_Unpacker
             TextEntry[] entries = ReadEntries(ref reader, header);
 			string[] result = new string[header.LineCount];
             reader.BaseStream.Seek(header.DialogDataOffset, SeekOrigin.Begin);
+			List<byte> textData = reader.ReadBytes((int)(reader.BaseStream.Length - reader.BaseStream.Position)).ToList();
+			textData.Reverse();
+			while (textData.First() == 0)
+            {
+				textData.RemoveAt(0);
+            }
+			textData.Reverse();
+			int index = 0;
 			for (int i = 0; i < result.Length; i++)
             {
 				List<byte> bytes = new List<byte>();
-				byte b = reader.ReadByte();
-				while (b != 0 && reader.BaseStream.Position < reader.BaseStream.Length)
+				byte b = textData.ElementAt(index);
+				while (index < textData.Count)
                 {
+					index++;
 					if (b == 0x8D) break;
 					bytes.Add(b);
-					b = reader.ReadByte();
+					b = textData.ElementAt(index);
                 }
 				entries[i].Data = bytes.ToArray();
 				result[i] = FullDecode(bytes);
             }
-            reader.Close();
+			reader.Close();
 			result = result.ToArray();
 			return result;
         }
@@ -200,7 +214,6 @@ namespace PZ4_RSL_Unpacker
             {
 				reader.BaseStream.Seek(0, SeekOrigin.Begin);
 				writer.Write(reader.ReadBytes(header.DialogDataOffset));
-				//writer.Write(reader.ReadBytes(entries[2].Pointer));
 				int pointer = 0;
 				for (int i = 0; i < entries.Length; i++)
                 {
