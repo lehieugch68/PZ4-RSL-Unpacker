@@ -213,15 +213,15 @@ namespace PZ4_RSL_Unpacker
                         {
                             line = sr.ReadLine();
                         }
-                        int count = -1;
+                        int count = 0;
                         int tableIndex = int.Parse(line.Split('=')[1]);
+                        line = sr.ReadLine();
                         while (!line.StartsWith("*/"))
                         {
                             strs.Add(line);
                             count++;
                             line = sr.ReadLine();
                         }
-                        Console.WriteLine(count);
                         pages[pageIndex].PageTables[tableIndex].Lines = new LineIndex[count];
                         pages[pageIndex].PageTables[tableIndex].LineCount = (ushort)count;
                         for (int x = 0; x < count; x++)
@@ -244,7 +244,7 @@ namespace PZ4_RSL_Unpacker
                 writer.Write(header.PageCount);
                 writer.Write(header.LineCount);
                 reader.BaseStream.Position = writer.BaseStream.Position;
-                writer.Write(reader.ReadBytes(header.PageTableOffset - (int)reader.BaseStream.Position));
+                writer.Write(reader.ReadBytes(0x14));
                 writer.Write(new byte[(header.PageCount * 4) + (0x20 - ((header.PageCount * 4) % 0x20))]);
                 header.DialogTableOffset = (int)writer.BaseStream.Position;
                 writer.Write(new byte[(header.LineCount * 4) + (0x10 - ((header.LineCount * 4) % 0x10))]);
@@ -284,6 +284,7 @@ namespace PZ4_RSL_Unpacker
                             writer.Write(new byte[0xC]);
                         }
                     }
+                    pagePointer += writer.BaseStream.Position - pageOffset;
                 }
                 header.DialogDataOffset = (int)writer.BaseStream.Position;
                 for (int i = 0; i < header.LineCount; i++)
@@ -296,9 +297,9 @@ namespace PZ4_RSL_Unpacker
                     writer.Write(encoded);
                 }
 
-                if (writer.BaseStream.Length % 0x20 != 0)
+                if (writer.BaseStream.Length % 0x10 != 0)
                 {
-                    int padding = (int)(0x20 - (writer.BaseStream.Length % 0x20));
+                    int padding = (int)(0x10 - (writer.BaseStream.Length % 0x10));
                     writer.Write(new byte[padding]);
                 }
             }
