@@ -100,12 +100,13 @@ namespace PZ4_RSL_Unpacker
                 result[i].Title = reader.ReadInt32();
                 result[i].TableCount = reader.ReadInt32();
                 result[i].TableOffset = reader.ReadInt32();
+                long length = 0;
                 reader.BaseStream.Seek(start + result[i].TableOffset, SeekOrigin.Begin);
                 result[i].PageTables = new PageTable[result[i].TableCount];
-                long length = 0;
                 for (int x = 0; x < result[i].TableCount; x++)
                 {
                     result[i].PageTables[x].Pointer = reader.ReadInt32();
+                    length = result[i].PageTables[x].Pointer;
                     long nextPage = reader.BaseStream.Position;
                     reader.BaseStream.Seek(start + result[i].PageTables[x].Pointer, SeekOrigin.Begin);
                     long tableStart = reader.BaseStream.Position;
@@ -113,7 +114,6 @@ namespace PZ4_RSL_Unpacker
                     result[i].PageTables[x].LineCount = reader.ReadUInt16();
                     result[i].PageTables[x].Unk = reader.ReadBytes(0x1C);
                     result[i].PageTables[x].Lines = new LineIndex[result[i].PageTables[x].LineCount];
-                    length += tableStart - start + result[i].PageTables[x].Pointer + (result[i].PageTables[x].LineCount * 0x10);
                     for (int y = 0; y < result[i].PageTables[x].LineCount; y++)
                     {
                         result[i].PageTables[x].Lines[y].Pointer = reader.ReadInt32();
@@ -122,9 +122,11 @@ namespace PZ4_RSL_Unpacker
                         result[i].PageTables[x].Lines[y].Index = reader.ReadInt32();
                         reader.BaseStream.Position = nextPointer;
                     }
+                    length += result[i].TableOffset + (0x10 - ((result[i].TableCount * 4) % 0x10)) +
+                        (result[i].TableCount * 4) + (0x10 * result[i].PageTables[x].LineCount);
                     reader.BaseStream.Position = nextPage;
                 }
-                reader.BaseStream.Seek(length + start, SeekOrigin.Begin);
+                reader.BaseStream.Seek(start + length, SeekOrigin.Begin);
             }
             return result;
         }
@@ -154,8 +156,8 @@ namespace PZ4_RSL_Unpacker
             Header header = ReadHeader(ref reader);
             TextEntry[] entries = ReadEntries(ref reader, header);
             Page[] pages = ReadPages(ref reader, header);
-            Console.WriteLine(pages.Length);
-            using (FileStream stream = File.Open(txt, FileMode.Truncate, FileAccess.ReadWrite))
+            if (File.Exists(txt)) File.WriteAllText(txt, string.Empty);
+            using (FileStream stream = File.Open(txt, FileMode.OpenOrCreate, FileAccess.ReadWrite))
             {
                 using (StreamWriter sw = new StreamWriter(stream))
                 {
@@ -163,31 +165,45 @@ namespace PZ4_RSL_Unpacker
                     {
                         sw.WriteLine($"#PAGE_INDEX={i}");
                         sw.WriteLine($"#LINE_COUNT={pages[i].TableCount}");
+                        sw.WriteLine($"#TITLE_INDEX={pages[i].Title}");
                         sw.WriteLine($"#TITLE={entries[pages[i].Title].Text}\n");
                         for (int x = 0; x < pages[i].PageTables.Length; x++)
                         {
                             sw.WriteLine($"/*INDEX={x}");
-                            Console.WriteLine(pages[i].PageTables[x].Lines.Length);
                             foreach (var line in pages[i].PageTables[x].Lines)
                             {
                                 sw.WriteLine(entries[line.Index].Text);
                             }
                             sw.WriteLine($"*/");
                         }
-                        sw.WriteLine($"#END_PAGE\n");
+                        sw.WriteLine($"\n#END_PAGE\n");
                     }
                 }
             }
             reader.Close();
         }
-		public static byte[] Repack(string file)
+		public static void Repack(string txt)
         {
-			string gdlg = Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}.GDLG");
-			string[] input = File.ReadAllLines(file);
+			string gdlg = Path.Combine(Path.GetDirectoryName(txt), $"{Path.GetFileNameWithoutExtension(txt)}.GDLG");
 			BinaryReader reader = new BinaryReader(File.OpenRead(gdlg));
 			Header header = ReadHeader(ref reader);
 			TextEntry[] entries = ReadEntries(ref reader, header);
-			MemoryStream stream = new MemoryStream();
+            Page[] pages = ReadPages(ref reader, header);
+            using (StreamReader sr = new StreamReader(txt))
+            {
+                while (!sr.EndOfStream)
+                {
+                    string line = sr.ReadLine();
+                    if (line.StartsWith("#PAGE_INDEX="))
+                    {
+                        int pageIndex = int.Parse(line.Split('=')[1]);
+                        int lineCount = int.Parse(sr.ReadLine().Split('=')[1]);
+
+                    }
+                }
+                
+            }
+            /*MemoryStream stream = new MemoryStream();
 			using (BinaryWriter writer = new BinaryWriter(stream))
             {
 				reader.BaseStream.Seek(0, SeekOrigin.Begin);
@@ -223,8 +239,8 @@ namespace PZ4_RSL_Unpacker
                 {
 					writer.Write(entry.Pointer);
                 }
-            }
-			return stream.ToArray();
+            }*/
+            //return stream.ToArray();
 		}
     }
 }
