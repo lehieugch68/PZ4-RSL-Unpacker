@@ -1,10 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
-using System.Drawing;
-using System.Drawing.Imaging;
 
 namespace PZ4_RSL_Unpacker
 {
@@ -41,12 +36,6 @@ namespace PZ4_RSL_Unpacker
                     {
                         byte[] result = GDLG.Repack(file);
                         File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}-new.GDLG"), result);
-                    }
-                    else if (ext == ".bmp")
-                    {
-                        Bitmap data = new Bitmap(Image.FromFile(file));
-                        byte[] result = GCT0Bitmap.WriteI4(data);
-                        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}.bitmap"), result);
                     }
                 }
             }
