@@ -164,7 +164,6 @@ namespace PZ4_RSL_Unpacker
                     for (int i = 0; i < pages.Length; i++)
                     {
                         sw.WriteLine($"#PAGE_INDEX={i}");
-                        sw.WriteLine($"#LINE_COUNT={pages[i].TableCount}");
                         sw.WriteLine($"#TITLE_INDEX={pages[i].Title}");
                         sw.WriteLine($"#TITLE={entries[pages[i].Title].Text}\n");
                         for (int x = 0; x < pages[i].PageTables.Length; x++)
@@ -174,7 +173,7 @@ namespace PZ4_RSL_Unpacker
                             {
                                 sw.WriteLine(entries[line.Index].Text);
                             }
-                            sw.WriteLine($"*/");
+                            sw.WriteLine($"*/\n");
                         }
                         sw.WriteLine($"\n#END_PAGE\n");
                     }
@@ -197,8 +196,22 @@ namespace PZ4_RSL_Unpacker
                     if (line.StartsWith("#PAGE_INDEX="))
                     {
                         int pageIndex = int.Parse(line.Split('=')[1]);
-                        int lineCount = int.Parse(sr.ReadLine().Split('=')[1]);
-
+                        int titleIndex = int.Parse(sr.ReadLine().Split('=')[1]);
+                        line = sr.ReadLine();
+                        for (int i = 0; i < pages[pageIndex].TableCount; i++)
+                        {
+                            while (!line.StartsWith("/*INDEX="))
+                            {
+                                line = sr.ReadLine();
+                            }
+                            int tableIndex = int.Parse(line.Split('=')[1]);
+                            List<string> tableLines = new List<string>();
+                            while (!line.StartsWith("/*"))
+                            {
+                                tableLines.Add(line);
+                                line = sr.ReadLine();
+                            }
+                        }
                     }
                 }
                 
