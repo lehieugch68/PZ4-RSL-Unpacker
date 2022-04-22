@@ -29,8 +29,7 @@ namespace PZ4_RSL_Unpacker
                     }
                     else if (ext == ".gdlg")
                     {
-                        string[] result = GDLG.Unpack(file);
-                        File.WriteAllLines(Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}.txt"), result);
+                        GDLG.Unpack(file, Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}.txt"));
                     }
                     else if (ext == ".txt")
                     {
