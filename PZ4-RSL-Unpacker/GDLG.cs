@@ -179,7 +179,7 @@ namespace PZ4_RSL_Unpacker
             }
             reader.Close();
         }
-		public static void Repack(string txt)
+		public static byte[] Repack(string txt)
         {
 			string gdlg = Path.Combine(Path.GetDirectoryName(txt), $"{Path.GetFileNameWithoutExtension(txt)}.GDLG");
 			BinaryReader reader = new BinaryReader(File.OpenRead(gdlg));
@@ -191,12 +191,13 @@ namespace PZ4_RSL_Unpacker
             {
                 while (!sr.EndOfStream)
                 {
-                    string line = sr.ReadLine();
+                    string line = string.Empty;
                     int index = -1;
-                    while (!line.StartsWith("#PAGE="))
+                    while (!line.StartsWith("#PAGE=") && !sr.EndOfStream)
                     {
                         line = sr.ReadLine();
                     }
+                    if (sr.EndOfStream) break;
                     int pageIndex = int.Parse(line.Split('=')[1]);
                     string title = sr.ReadLine().Split('=')[1].Trim();
                     strs.Add(title);
@@ -212,7 +213,7 @@ namespace PZ4_RSL_Unpacker
                         {
                             line = sr.ReadLine();
                         }
-                        int count = 0;
+                        int count = -1;
                         int tableIndex = int.Parse(line.Split('=')[1]);
                         while (!line.StartsWith("*/"))
                         {
@@ -220,6 +221,7 @@ namespace PZ4_RSL_Unpacker
                             count++;
                             line = sr.ReadLine();
                         }
+                        Console.WriteLine(count);
                         pages[pageIndex].PageTables[tableIndex].Lines = new LineIndex[count];
                         pages[pageIndex].PageTables[tableIndex].LineCount = (ushort)count;
                         for (int x = 0; x < count; x++)
@@ -286,47 +288,21 @@ namespace PZ4_RSL_Unpacker
                 header.DialogDataOffset = (int)writer.BaseStream.Position;
                 for (int i = 0; i < header.LineCount; i++)
                 {
-                    
+                    byte[] encoded = TextEncode(strs[i]);
+                    long textPointer = writer.BaseStream.Position;
+                    writer.BaseStream.Position = header.DialogTableOffset + (i * 4);
+                    writer.Write((int)(textPointer - header.DialogDataOffset));
+                    writer.BaseStream.Position = textPointer;
+                    writer.Write(encoded);
+                }
+
+                if (writer.BaseStream.Length % 0x20 != 0)
+                {
+                    int padding = (int)(0x20 - (writer.BaseStream.Length % 0x20));
+                    writer.Write(new byte[padding]);
                 }
             }
-            /*MemoryStream stream = new MemoryStream();
-			using (BinaryWriter writer = new BinaryWriter(stream))
-            {
-				reader.BaseStream.Seek(0, SeekOrigin.Begin);
-				writer.Write(reader.ReadBytes(header.DialogDataOffset));
-				int pointer = 0;
-				for (int i = 0; i < entries.Length; i++)
-                {
-					if (!input[i].StartsWith("{Copy}")) entries[i].Data = TextEncode(i < input.Length ? input[i] : "");
-                    else
-                    {
-						reader.BaseStream.Position = header.DialogDataOffset + entries[i].Pointer;
-						List<byte> bytes = new List<byte>();
-						byte b = reader.ReadByte();
-						while (b != 0 && reader.BaseStream.Position < reader.BaseStream.Length)
-						{
-							bytes.Add(b);
-							if (b == 0x8D) break;
-							b = reader.ReadByte();
-						}
-						entries[i].Data = bytes.ToArray();
-					} 
-					writer.Write(entries[i].Data);
-					entries[i].Pointer = pointer;
-					pointer += entries[i].Data.Length;
-                }
-				if (writer.BaseStream.Length % 0x20 != 0)
-                {
-					int padding = (int)(0x20 - (writer.BaseStream.Length % 0x20));
-					writer.Write(new byte[padding]);
-                }
-				writer.BaseStream.Seek(header.DialogTableOffset, SeekOrigin.Begin);
-				foreach (var entry in entries)
-                {
-					writer.Write(entry.Pointer);
-                }
-            }*/
-                //return stream.ToArray();
+            return stream.ToArray();
         }
     }
 }

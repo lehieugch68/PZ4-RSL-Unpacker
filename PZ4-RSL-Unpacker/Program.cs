@@ -41,8 +41,17 @@ namespace PZ4_RSL_Unpacker
                     }
                     else if (ext == ".txt")
                     {
-                        //byte[] result = GDLG.Repack(file);
-                        //File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}-new.GDLG"), result);
+                        try
+                        {
+                            byte[] result = GDLG.Repack(file);
+
+                            File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}-new.GDLG"), result);
+                        }
+                        catch (Exception err)
+                        {
+                            Console.WriteLine(err);
+                        }
+                        
                     }
                 }
             }
