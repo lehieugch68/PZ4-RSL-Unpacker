@@ -241,7 +241,53 @@ namespace PZ4_RSL_Unpacker
                 writer.Write(header.Unk);
                 writer.Write(header.PageCount);
                 writer.Write(header.LineCount);
-
+                reader.BaseStream.Position = writer.BaseStream.Position;
+                writer.Write(reader.ReadBytes(header.PageTableOffset - (int)reader.BaseStream.Position));
+                writer.Write(new byte[(header.PageCount * 4) + (0x20 - ((header.PageCount * 4) % 0x20))]);
+                header.DialogTableOffset = (int)writer.BaseStream.Position;
+                writer.Write(new byte[(header.LineCount * 4) + (0x10 - ((header.LineCount * 4) % 0x10))]);
+                header.PageDataOffset = (int)writer.BaseStream.Position;
+                long pagePointer = 0;
+                for (int i = 0; i < header.PageCount; i++)
+                {
+                    pages[i].Pointer = (int)pagePointer;
+                    long pageOffset = writer.BaseStream.Position;
+                    writer.BaseStream.Position = header.PageTableOffset + (i * 4);
+                    writer.Write(pages[i].Pointer);
+                    writer.BaseStream.Position = pageOffset;
+                    writer.Write(pages[i].Title);
+                    writer.Write(pages[i].TableCount);
+                    writer.Write(pages[i].TableOffset);
+                    writer.Write(new byte[0x14]);
+                    long tablePointerOffset = writer.BaseStream.Position;
+                    writer.Write(new byte[(pages[i].TableCount * 4) + (0x10 - ((pages[i].TableCount * 4) % 0x10))]);
+                    for (int x = 0; x < pages[i].TableCount; x++)
+                    {
+                        long tableOffset = writer.BaseStream.Position;
+                        writer.BaseStream.Position = tablePointerOffset + (x * 4);
+                        writer.Write((int)(tableOffset - pageOffset));
+                        writer.BaseStream.Position = tableOffset;
+                        writer.Write(pages[i].PageTables[x].Magic);
+                        writer.Write(pages[i].PageTables[x].LineCount);
+                        writer.Write(pages[i].PageTables[x].Unk);
+                        long linePointerOffset = writer.BaseStream.Position;
+                        writer.Write(new byte[(pages[i].PageTables[x].LineCount * 4) + (0x10 - ((pages[i].PageTables[x].LineCount * 4) % 0x10))]);
+                        for (int y = 0; y < pages[i].PageTables[x].LineCount; y++)
+                        {
+                            long lineOffset = writer.BaseStream.Position;
+                            writer.BaseStream.Position = linePointerOffset + (y * 4);
+                            writer.Write((int)(lineOffset - tableOffset));
+                            writer.BaseStream.Position = lineOffset;
+                            writer.Write(pages[i].PageTables[x].Lines[y].Index);
+                            writer.Write(new byte[0xC]);
+                        }
+                    }
+                }
+                header.DialogDataOffset = (int)writer.BaseStream.Position;
+                for (int i = 0; i < header.LineCount; i++)
+                {
+                    
+                }
             }
             /*MemoryStream stream = new MemoryStream();
 			using (BinaryWriter writer = new BinaryWriter(stream))
