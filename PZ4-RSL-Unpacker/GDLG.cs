@@ -14,13 +14,13 @@ namespace PZ4_RSL_Unpacker
             public int Magic;
             public int Unk;
             public short PageCount;
-            public short LineCount;
+            public short MessageCount;
             public int PageDataOffset;
             public int PageTableOffset;
-            public int DialogDataOffset;
-            public int DialogTableOffset;
+            public int MessageDataOffset;
+            public int MessageTableOffset;
         }
-        private struct TextEntry
+        private struct DialogMessage
         {
             public int Pointer;
             public byte[] Data;
@@ -30,19 +30,19 @@ namespace PZ4_RSL_Unpacker
         {
             public int Pointer;
             public int Title;
-            public int TableCount;
-            public int TableOffset;
-            public PageTable[] PageTables;
+            public int DialogCount;
+            public int DialogOffset;
+            public PageDialog[] PageDialogs;
         }
-        private struct PageTable
+        private struct PageDialog
         {
             public int Pointer;
             public short Magic;
-            public ushort LineCount;
+            public ushort MessageCount;
             public byte[] Unk;
-            public LineIndex[] Lines;
+            public DialogMapping[] Messages;
         }
-        private struct LineIndex
+        private struct DialogMapping
         {
             public int Pointer;
             public int Index;
@@ -56,26 +56,26 @@ namespace PZ4_RSL_Unpacker
             if (header.Magic != 0x474C4447) throw new Exception("Unsupported file type.");
             header.Unk = reader.ReadInt32();
             header.PageCount = reader.ReadInt16();
-            header.LineCount = reader.ReadInt16();
+            header.MessageCount = reader.ReadInt16();
             header.PageDataOffset = reader.ReadInt32();
             header.PageTableOffset = reader.ReadInt32();
-            header.DialogDataOffset = reader.ReadInt32();
-            header.DialogTableOffset = reader.ReadInt32();
+            header.MessageDataOffset = reader.ReadInt32();
+            header.MessageTableOffset = reader.ReadInt32();
             return header;
         }
-        private static TextEntry[] ReadEntries(ref BinaryReader reader, Header header)
+        private static DialogMessage[] ReadEntries(ref BinaryReader reader, Header header)
         {
-            List<TextEntry> list = new List<TextEntry>();
-            reader.BaseStream.Seek(header.DialogTableOffset, SeekOrigin.Begin);
-            for (int i = 0; i < header.LineCount; i++)
+            List<DialogMessage> list = new List<DialogMessage>();
+            reader.BaseStream.Seek(header.MessageTableOffset, SeekOrigin.Begin);
+            for (int i = 0; i < header.MessageCount; i++)
             {
-                TextEntry entry = new TextEntry();
+                DialogMessage entry = new DialogMessage();
                 entry.Pointer = reader.ReadInt32();
                 list.Add(entry);
             }
-            reader.BaseStream.Seek(header.DialogDataOffset, SeekOrigin.Begin);
-            TextEntry[]  result = list.ToArray();
-            for (int i = 0; i < header.LineCount; i++)
+            reader.BaseStream.Seek(header.MessageDataOffset, SeekOrigin.Begin);
+            DialogMessage[]  result = list.ToArray();
+            for (int i = 0; i < header.MessageCount; i++)
             {
                 List<byte> bytes = new List<byte>();
                 byte b = reader.ReadByte();
@@ -101,29 +101,29 @@ namespace PZ4_RSL_Unpacker
                 long nextPage = reader.BaseStream.Position;
                 reader.BaseStream.Seek(header.PageDataOffset + result[i].Pointer, SeekOrigin.Begin);
                 result[i].Title = reader.ReadInt32();
-                result[i].TableCount = reader.ReadInt32();
-                result[i].TableOffset = reader.ReadInt32();
-                reader.BaseStream.Seek(header.PageDataOffset + result[i].Pointer + result[i].TableOffset, SeekOrigin.Begin);
-                result[i].PageTables = new PageTable[result[i].TableCount];
-                for (int x = 0; x < result[i].TableCount; x++)
+                result[i].DialogCount = reader.ReadInt32();
+                result[i].DialogOffset = reader.ReadInt32();
+                reader.BaseStream.Seek(header.PageDataOffset + result[i].Pointer + result[i].DialogOffset, SeekOrigin.Begin);
+                result[i].PageDialogs = new PageDialog[result[i].DialogCount];
+                for (int x = 0; x < result[i].DialogCount; x++)
                 {
-                    result[i].PageTables[x].Pointer = reader.ReadInt32();
-                    long nextTable = reader.BaseStream.Position;
-                    reader.BaseStream.Seek(header.PageDataOffset + result[i].Pointer + result[i].PageTables[x].Pointer, SeekOrigin.Begin);
+                    result[i].PageDialogs[x].Pointer = reader.ReadInt32();
+                    long nextDialog = reader.BaseStream.Position;
+                    reader.BaseStream.Seek(header.PageDataOffset + result[i].Pointer + result[i].PageDialogs[x].Pointer, SeekOrigin.Begin);
                     long tableStart = reader.BaseStream.Position;
-                    result[i].PageTables[x].Magic = reader.ReadInt16();
-                    result[i].PageTables[x].LineCount = reader.ReadUInt16();
-                    result[i].PageTables[x].Unk = reader.ReadBytes(0x1C);
-                    result[i].PageTables[x].Lines = new LineIndex[result[i].PageTables[x].LineCount];
-                    for (int y = 0; y < result[i].PageTables[x].LineCount; y++)
+                    result[i].PageDialogs[x].Magic = reader.ReadInt16();
+                    result[i].PageDialogs[x].MessageCount = reader.ReadUInt16();
+                    result[i].PageDialogs[x].Unk = reader.ReadBytes(0x1C);
+                    result[i].PageDialogs[x].Messages = new DialogMapping[result[i].PageDialogs[x].MessageCount];
+                    for (int y = 0; y < result[i].PageDialogs[x].MessageCount; y++)
                     {
-                        result[i].PageTables[x].Lines[y].Pointer = reader.ReadInt32();
+                        result[i].PageDialogs[x].Messages[y].Pointer = reader.ReadInt32();
                         long nextPointer = reader.BaseStream.Position;
-                        reader.BaseStream.Seek(tableStart + result[i].PageTables[x].Lines[y].Pointer, SeekOrigin.Begin);
-                        result[i].PageTables[x].Lines[y].Index = reader.ReadInt32();
+                        reader.BaseStream.Seek(tableStart + result[i].PageDialogs[x].Messages[y].Pointer, SeekOrigin.Begin);
+                        result[i].PageDialogs[x].Messages[y].Index = reader.ReadInt32();
                         reader.BaseStream.Position = nextPointer;
                     }
-                    reader.BaseStream.Position = nextTable;
+                    reader.BaseStream.Position = nextDialog;
                 }
                 reader.BaseStream.Position = nextPage;
             }
@@ -153,7 +153,7 @@ namespace PZ4_RSL_Unpacker
         {
             BinaryReader reader = new BinaryReader(File.OpenRead(gdlg));
             Header header = ReadHeader(ref reader);
-            TextEntry[] entries = ReadEntries(ref reader, header);
+            DialogMessage[] entries = ReadEntries(ref reader, header);
             Page[] pages = ReadPages(ref reader, header);
             if (File.Exists(txt)) File.WriteAllText(txt, string.Empty);
             using (FileStream stream = File.Open(txt, FileMode.OpenOrCreate, FileAccess.ReadWrite))
@@ -165,10 +165,10 @@ namespace PZ4_RSL_Unpacker
                         sw.WriteLine($"#PAGE={i}");
                         sw.WriteLine($"#TITLE={entries[pages[i].Title].Text}");
                         sw.WriteLine($"#TITLE_INDEX={pages[i].Title}\n");
-                        for (int x = 0; x < pages[i].PageTables.Length; x++)
+                        for (int x = 0; x < pages[i].PageDialogs.Length; x++)
                         {
                             sw.WriteLine($"/*INDEX={x}");
-                            foreach (var line in pages[i].PageTables[x].Lines)
+                            foreach (var line in pages[i].PageDialogs[x].Messages)
                             {
                                 sw.WriteLine(entries[line.Index].Text);
                             }
@@ -185,9 +185,9 @@ namespace PZ4_RSL_Unpacker
 			string gdlg = Path.Combine(Path.GetDirectoryName(txt), $"{Path.GetFileNameWithoutExtension(txt)}.GDLG");
 			BinaryReader reader = new BinaryReader(File.OpenRead(gdlg));
 			Header header = ReadHeader(ref reader);
-			TextEntry[] entries = ReadEntries(ref reader, header);
+			DialogMessage[] entries = ReadEntries(ref reader, header);
             Page[] pages = ReadPages(ref reader, header);
-            List<string> strs = new List<string>();
+            List<string> messages = new List<string>();
             int index = 0;
             using (StreamReader sr = new StreamReader(txt))
             {
@@ -202,34 +202,33 @@ namespace PZ4_RSL_Unpacker
                     int pageIndex = int.Parse(line.Split('=')[1]);
                     string title = sr.ReadLine().Split('=')[1].Trim();
                     int titleIndex = int.Parse(sr.ReadLine().Split('=')[1]);
-                    strs.Add(title);
+                    messages.Add(title);
                     pages[pageIndex].Title = index++;
                     if (entries[titleIndex + 1].Text == "NON")
                     {
-                        strs.Add("NON");
+                        messages.Add(entries[titleIndex + 1].Text);
                         index++;
                     }
-                    for (int i = 0; i < pages[pageIndex].TableCount; i++)
+                    for (int i = 0; i < pages[pageIndex].DialogCount; i++)
                     {
                         while (!line.StartsWith("/*INDEX="))
                         {
                             line = sr.ReadLine();
                         }
                         int count = 0;
-                        int tableIndex = int.Parse(line.Split('=')[1]);
+                        int dialogIndex = int.Parse(line.Split('=')[1]);
                         line = sr.ReadLine();
                         while (!line.StartsWith("*/"))
                         {
-                            strs.Add(line);
+                            messages.Add(line);
                             count++;
                             line = sr.ReadLine();
                         }
-                        pages[pageIndex].PageTables[tableIndex].Lines = new LineIndex[count];
-                        pages[pageIndex].PageTables[tableIndex].LineCount = (ushort)count;
-                        Console.WriteLine(count);
+                        pages[pageIndex].PageDialogs[dialogIndex].Messages = new DialogMapping[count];
+                        pages[pageIndex].PageDialogs[dialogIndex].MessageCount = (ushort)count;
                         for (int x = 0; x < count; x++)
                         {
-                            pages[pageIndex].PageTables[i].Lines[x].Index = index++;
+                            pages[pageIndex].PageDialogs[i].Messages[x].Index = index++;
                         }
                     }
                     while (!line.StartsWith("#END"))
@@ -238,21 +237,21 @@ namespace PZ4_RSL_Unpacker
                     }
                 }
             }
-            header.LineCount = (short)strs.Count;
+            header.MessageCount = (short)messages.Count;
             MemoryStream stream = new MemoryStream();
             using (BinaryWriter writer = new BinaryWriter(stream))
             {
                 writer.Write(header.Magic);
                 writer.Write(header.Unk);
                 writer.Write(header.PageCount);
-                writer.Write(header.LineCount);
+                writer.Write(header.MessageCount);
                 reader.BaseStream.Position = writer.BaseStream.Position;
                 writer.Write(reader.ReadBytes(0x14));
                 writer.Write(new byte[header.PageCount * 4]);
                 if ((header.PageCount * 4) % 0x20 != 0) writer.Write(new byte[0x20 - ((header.PageCount * 4) % 0x20)]);
-                header.DialogTableOffset = (int)writer.BaseStream.Position;
-                writer.Write(new byte[header.LineCount * 4]);
-                if ((header.LineCount * 4) % 0x10 != 0) writer.Write(new byte[0x10 - ((header.LineCount * 4) % 0x10)]);
+                header.MessageTableOffset = (int)writer.BaseStream.Position;
+                writer.Write(new byte[header.MessageCount * 4]);
+                if ((header.MessageCount * 4) % 0x10 != 0) writer.Write(new byte[0x10 - ((header.MessageCount * 4) % 0x10)]);
                 header.PageDataOffset = (int)writer.BaseStream.Position;
                 writer.BaseStream.Position = 0xC;
                 writer.Write(header.PageDataOffset);
@@ -266,46 +265,46 @@ namespace PZ4_RSL_Unpacker
                     writer.Write(pages[i].Pointer);
                     writer.BaseStream.Position = pageOffset;
                     writer.Write(pages[i].Title);
-                    writer.Write(pages[i].TableCount);
-                    writer.Write(pages[i].TableOffset);
+                    writer.Write(pages[i].DialogCount);
+                    writer.Write(pages[i].DialogOffset);
                     writer.Write(new byte[0x14]);
-                    long tablePointerOffset = writer.BaseStream.Position;
-                    writer.Write(new byte[pages[i].TableCount * 4]);
-                    if ((pages[i].TableCount * 4) % 0x10 != 0) writer.Write(new byte[(0x10 - ((pages[i].TableCount * 4) % 0x10))]);
-                    for (int x = 0; x < pages[i].TableCount; x++)
+                    long dialogTableOffset = writer.BaseStream.Position;
+                    writer.Write(new byte[pages[i].DialogCount * 4]);
+                    if ((pages[i].DialogCount * 4) % 0x10 != 0) writer.Write(new byte[(0x10 - ((pages[i].DialogCount * 4) % 0x10))]);
+                    for (int x = 0; x < pages[i].DialogCount; x++)
                     {
-                        long tableOffset = writer.BaseStream.Position;
-                        writer.BaseStream.Position = tablePointerOffset + (x * 4);
-                        writer.Write((int)(tableOffset - pageOffset));
-                        writer.BaseStream.Position = tableOffset;
-                        writer.Write(pages[i].PageTables[x].Magic);
-                        writer.Write(pages[i].PageTables[x].LineCount);
-                        writer.Write(pages[i].PageTables[x].Unk);
-                        long linePointerOffset = writer.BaseStream.Position;
-                        writer.Write(new byte[pages[i].PageTables[x].LineCount * 4]);
-                        if ((pages[i].PageTables[x].LineCount * 4) % 0x10 != 0) writer.Write(new byte[0x10 - ((pages[i].PageTables[x].LineCount * 4) % 0x10)]);
-                        for (int y = 0; y < pages[i].PageTables[x].LineCount; y++)
+                        long dialogOffset = writer.BaseStream.Position;
+                        writer.BaseStream.Position = dialogTableOffset + (x * 4);
+                        writer.Write((int)(dialogOffset - pageOffset));
+                        writer.BaseStream.Position = dialogOffset;
+                        writer.Write(pages[i].PageDialogs[x].Magic);
+                        writer.Write(pages[i].PageDialogs[x].MessageCount);
+                        writer.Write(pages[i].PageDialogs[x].Unk);
+                        long messageTableOffset = writer.BaseStream.Position;
+                        writer.Write(new byte[pages[i].PageDialogs[x].MessageCount * 4]);
+                        if ((pages[i].PageDialogs[x].MessageCount * 4) % 0x10 != 0) writer.Write(new byte[0x10 - ((pages[i].PageDialogs[x].MessageCount * 4) % 0x10)]);
+                        for (int y = 0; y < pages[i].PageDialogs[x].MessageCount; y++)
                         {
-                            long lineOffset = writer.BaseStream.Position;
-                            writer.BaseStream.Position = linePointerOffset + (y * 4);
-                            writer.Write((int)(lineOffset - tableOffset));
-                            writer.BaseStream.Position = lineOffset;
-                            writer.Write(pages[i].PageTables[x].Lines[y].Index);
+                            long messageOffset = writer.BaseStream.Position;
+                            writer.BaseStream.Position = messageTableOffset + (y * 4);
+                            writer.Write((int)(messageOffset - dialogOffset));
+                            writer.BaseStream.Position = messageOffset;
+                            writer.Write(pages[i].PageDialogs[x].Messages[y].Index);
                             writer.Write(new byte[0xC]);
                         }
                     }
                     pagePointer += writer.BaseStream.Position - pageOffset;
                 }
-                header.DialogDataOffset = (int)writer.BaseStream.Position;
+                header.MessageDataOffset = (int)writer.BaseStream.Position;
                 writer.BaseStream.Position = 0x14;
-                writer.Write(header.DialogDataOffset);
-                writer.BaseStream.Position = header.DialogDataOffset;
-                for (int i = 0; i < header.LineCount; i++)
+                writer.Write(header.MessageDataOffset);
+                writer.BaseStream.Position = header.MessageDataOffset;
+                for (int i = 0; i < header.MessageCount; i++)
                 {
-                    byte[] encoded = TextEncode(strs[i]);
+                    byte[] encoded = TextEncode(messages[i]);
                     long textPointer = writer.BaseStream.Position;
-                    writer.BaseStream.Position = header.DialogTableOffset + (i * 4);
-                    writer.Write((int)(textPointer - header.DialogDataOffset));
+                    writer.BaseStream.Position = header.MessageTableOffset + (i * 4);
+                    writer.Write((int)(textPointer - header.MessageDataOffset));
                     writer.BaseStream.Position = textPointer;
                     writer.Write(encoded);
                 }
