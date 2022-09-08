@@ -79,7 +79,7 @@ namespace PZ4_RSL_Unpacker
             {
                 List<byte> bytes = new List<byte>();
                 byte b = reader.ReadByte();
-                while (b != 0 && reader.BaseStream.Position < reader.BaseStream.Length)
+                while (reader.BaseStream.Position < reader.BaseStream.Length)
                 {
                     if (b == 0x8D) break;
                     bytes.Add(b);
@@ -246,7 +246,7 @@ namespace PZ4_RSL_Unpacker
                 writer.Write(header.PageCount);
                 writer.Write(header.MessageCount);
                 reader.BaseStream.Position = writer.BaseStream.Position;
-                writer.Write(reader.ReadBytes(0x14));
+                writer.Write(reader.ReadBytes(0x10 + 0x14));
                 writer.Write(new byte[header.PageCount * 4]);
                 if ((header.PageCount * 4) % 0x20 != 0) writer.Write(new byte[0x20 - ((header.PageCount * 4) % 0x20)]);
                 header.MessageTableOffset = (int)writer.BaseStream.Position;
@@ -255,6 +255,8 @@ namespace PZ4_RSL_Unpacker
                 header.PageDataOffset = (int)writer.BaseStream.Position;
                 writer.BaseStream.Position = 0xC;
                 writer.Write(header.PageDataOffset);
+                writer.BaseStream.Position = 0x18;
+                writer.Write(header.MessageTableOffset);
                 writer.BaseStream.Position = header.PageDataOffset;
                 long pagePointer = 0;
                 for (int i = 0; i < header.PageCount; i++)
